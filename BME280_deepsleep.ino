@@ -1,16 +1,13 @@
+#include <driver/adc.h>
 #include <WiFi.h>
-//#include <Wire.h>
-#include <SSD1306.h>
 #include <Adafruit_BME280.h>
-#include <WiFiUDP.h>
+#include <WiFiUdp.h>
+#include <HardwareSerial.h>
 
-
-#define ledPin 16
-//#define ledPin 2
+#define ledPin 4
 #define SDA 5
 #define SCL 4
 
-SSD1306Wire  display(0x3c, SDA, SCL);
 RTC_DATA_ATTR int bootCount = 0; //RTC fast memory
 WiFiUDP udp;
 Adafruit_BME280 bme; // I2C
@@ -20,14 +17,8 @@ const byte influxdb_host[] = {138, 201, 158, 136}; // the IP address of your Inf
 const int influxdb_port = 8089; // UDP port of your InfluxDB host
 float temperature, pressure, humidity;
 
-void display_init() {
-  display.init();
-  display.flipScreenVertically(); // does what is says
-  display.setFont(ArialMT_Plain_16); // does what is says
-  display.clear();
-  display.drawString(0, 0, "Hello");
-  display.display(); // display whatever is in the buffer  
-}
+void read_sensors(void);
+void getWeather(void);
 
 void print_wakeup_reason(){
   esp_sleep_wakeup_cause_t wakeup_reason;
@@ -49,21 +40,25 @@ void setup() {
   char buf[255];
 
   pinMode(ledPin, OUTPUT);
+
   Serial.begin(115200);
-  delay(1000);
-  //display_init();
+  delay(100);
+  
+  //ADC1 config
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_11);
+  int val = adc1_get_raw(ADC1_CHANNEL_6);
+  int adcr = analogRead(A6); //Использовать в аргументах ADC1_CHANNEL_0 нельзя!!!
+  Serial.print("Read ADC pin [" + String(ADC1_CHANNEL_6_GPIO_NUM) + "]: " + String(val) + " [" + String(adcr)+"]");
 
   bootCount++;
 
-  //display.clear();
+  Serial.println("********************");
   snprintf(buf, 254, "Wakeup count=%d", bootCount);
   Serial.println(buf);
-  //display.drawString(0, 0, buf);
-  //display.display();
+  Serial.println("********************");
 
   print_wakeup_reason();
-
-  digitalWrite(ledPin, HIGH);
 
   // Connecting to WiFi network
   Serial.println();
@@ -71,10 +66,22 @@ void setup() {
   Serial.print(ssid);
 
   WiFi.begin(ssid, passwd);
-  while (WiFi.status() != WL_CONNECTED) {
-  	delay(500);
+  for (int i = 0; i < 20 && (WiFi.status() != WL_CONNECTED); i++) {
+  	delay(1500);
   	Serial.print(".");
   }
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println();
+    Serial.println("WiFi is NOT connected. Spleeping 10 min.");
+      esp_sleep_enable_timer_wakeup(600e6);
+    delay(2000);
+    Serial.flush();
+
+    esp_deep_sleep_start();
+    
+  }
+  
+  digitalWrite(ledPin, HIGH);
   Serial.println();
   Serial.println("WiFi connected.");
 
@@ -93,16 +100,16 @@ void setup() {
   		delay(300);
   	}
   }
+  
   delay(3000);
   read_sensors();
   delay(1000);
 
 
-  esp_sleep_enable_timer_wakeup(300e6);
+  esp_sleep_enable_timer_wakeup(60e6);
   Serial.println("Going to sleep now");
   delay(2000);
   Serial.flush();
-  //display.ssd1306_command(SSD1306_DISPLAYOFF);
 
   esp_deep_sleep_start();
 }
@@ -134,7 +141,7 @@ void read_sensors() {
   Serial.print("Humidity = ");
   Serial.println(humidity);
 
-  udp_data = String("BME280,device_id=001 temperature=" + String(temperature));
+  udp_data = String("BME280,device_id=003 temperature=" + String(temperature));
   udp_data += String(",humidity=" + String(humidity));
   udp_data += String(",pressure=" + String(pressure));
   Serial.println("Sending UDP packet...");
