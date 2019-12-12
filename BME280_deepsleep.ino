@@ -16,6 +16,7 @@ const char* passwd = "kartoshka";
 const byte influxdb_host[] = {138, 201, 158, 136}; // the IP address of your InfluxDB host
 const int influxdb_port = 8089; // UDP port of your InfluxDB host
 float temperature, pressure, humidity;
+int adc_raw, adcr;
 
 void read_sensors(void);
 void getWeather(void);
@@ -47,10 +48,11 @@ void setup() {
   //ADC1 config
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_11);
-  int val = adc1_get_raw(ADC1_CHANNEL_6);
-  int adcr = analogRead(A6); //Использовать в аргументах ADC1_CHANNEL_0 нельзя!!!
-  Serial.print("Read ADC pin [" + String(ADC1_CHANNEL_6_GPIO_NUM) + "]: " + String(val) + " [" + String(adcr)+"]");
-
+  adc_raw = adc1_get_raw(ADC1_CHANNEL_6);
+  adcr = analogRead(A6); //Don't use in arguments ADC1_CHANNEL_0!!!
+  Serial.print("Read ADC pin [" + String(ADC1_CHANNEL_6_GPIO_NUM) + "]: " + String(adc_raw) + " [" + String(adcr)+"]");
+  Serial.println();
+  
   bootCount++;
 
   Serial.println("********************");
@@ -144,6 +146,7 @@ void read_sensors() {
   udp_data = String("BME280,device_id=003 temperature=" + String(temperature));
   udp_data += String(",humidity=" + String(humidity));
   udp_data += String(",pressure=" + String(pressure));
+  udp_data += String(",bat_voltage=" + String(adc_raw));
   Serial.println("Sending UDP packet...");
   Serial.println(udp_data);
   udp.beginPacket(influxdb_host, influxdb_port);
