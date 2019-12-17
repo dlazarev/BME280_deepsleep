@@ -37,6 +37,15 @@ void print_wakeup_reason(){
   }
 }
 
+int read_battery_level() {
+  int val = 0;
+  for(int i=0; i<10; i++) {
+    val += adc1_get_raw(ADC1_CHANNEL_6);
+    delay(5);
+  }
+  return val/10;
+}
+
 void setup() {
   char buf[255];
 
@@ -48,9 +57,8 @@ void setup() {
   //ADC1 config
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_CHANNEL_6,ADC_ATTEN_DB_11);
-  adc_raw = adc1_get_raw(ADC1_CHANNEL_6);
-  adcr = analogRead(A6); //Don't use in arguments ADC1_CHANNEL_0!!!
-  Serial.print("Read ADC pin [" + String(ADC1_CHANNEL_6_GPIO_NUM) + "]: " + String(adc_raw) + " [" + String(adcr)+"]");
+  adc_raw = read_battery_level();
+  Serial.println("Read ADC pin [" + String(ADC1_CHANNEL_6_GPIO_NUM) + "]: " + String(adc_raw));
   Serial.println();
   
   bootCount++;
