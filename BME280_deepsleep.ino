@@ -84,7 +84,11 @@ void setup() {
     Serial.println();
     Serial.println("WiFi is NOT connected. Spleeping 10 min.");
       esp_sleep_enable_timer_wakeup(600e6);
-    delay(2000);
+   
+    for(int i=0; i<8; i++) {
+    	digitalWrite(ledPin, ! digitalRead(ledPin));
+	delay(150);
+    } 
     Serial.flush();
 
     esp_deep_sleep_start();
