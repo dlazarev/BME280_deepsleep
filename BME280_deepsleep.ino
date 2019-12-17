@@ -11,7 +11,7 @@
 RTC_DATA_ATTR int bootCount = 0; //RTC fast memory
 WiFiUDP udp;
 Adafruit_BME280 bme; // I2C
-const char* ssid = "BOSON2.4";
+const char* ssid = "BOSON2.4"; //
 const char* passwd = "kartoshka";
 const byte influxdb_host[] = {138, 201, 158, 136}; // the IP address of your InfluxDB host
 const int influxdb_port = 8089; // UDP port of your InfluxDB host
